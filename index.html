@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>שם קוד בעברית</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="icon" type="image/png" href="src/assets/icon.png" />
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Handjet:wght@100..900&family=Rubik+Lines&family=Miriam+Libre:wght@400;700&display=swap" rel="stylesheet">
+    <style>
+      :root {
+        --game-red: #ff3e3e;
+        --game-blue: #3b82f6;
+        --game-dark: #1e293b;
+        --game-bg: #0f172a;
+        --game-panel: #1e293b;
+      }
+      
+      body {
+        font-family: 'Handjet', cursive;
+        background-color: var(--game-bg);
+        color: white;
+        margin: 0;
+        overflow-x: hidden;
+        /* Force body to fill the viewport and act as a flex container */
+        min-height: 100vh;
+        width: 100vw;
+        display: flex;
+        flex-direction: column;
+        /* Added a tiny bit of letter spacing globally just in case */
+        letter-spacing: 0.02em; 
+      }
+
+      /* Force the React root to fill the body and center the app */
+      #root {
+        flex: 1;
+        width: 100%;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+      }
+
+      /* Made the title significantly thicker */
+      .font-title { 
+        font-family: 'Handjet'; 
+        font-weight: 900; 
+        letter-spacing: 0.08em; 
+      } 
+      
+      .font-placeholder { font-family: 'Miriam Libre', sans-serif; }
+      
+      /* Added spacing between the letters for the main text */
+      .font-main { 
+        font-family: 'Handjet', cursive; 
+        letter-spacing: 0.08em; 
+      }
+      
+      .game-card-bg {
+        background-color: var(--game-panel);
+        border: 2px solid rgba(255,255,255,0.1);
+        box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.4);
+        color: white;
+      }
+
+      .btn-primary {
+        background-color: var(--game-red);
+        color: white;
+        transition: all 0.2s ease;
+        border: 1px solid rgba(255,255,255,0.1);
+      }
+      .btn-primary:hover {
+        background-color: #ef4444;
+        transform: translateY(-2px);
+      }
+
+      .input-standard {
+        background: rgba(255,255,255,0.05);
+        border: 2px solid rgba(255,255,255,0.1);
+        color: white;
+        font-family: 'Miriam Libre';
+        padding: 0.75rem;
+        outline: none;
+      }
+      .input-standard:focus {
+        border-color: var(--game-blue);
+        background: rgba(255,255,255,0.1);
+      }
+      
+      .paper-texture {
+        background-image: url("https://www.transparenttextures.com/patterns/dark-matter.png");
+      }
+
+      /* Custom Scrollbar */
+      ::-webkit-scrollbar {
+        width: 8px;
+      }
+      ::-webkit-scrollbar-track {
+        background: var(--game-bg);
+      }
+      ::-webkit-scrollbar-thumb {
+        background: var(--game-dark);
+        border-radius: 4px;
+      }
+      ::-webkit-scrollbar-thumb:hover {
+        background: #334155;
+      }
+    </style>
+  <script type="importmap">
+{
+  "imports": {
+    "react": "https://aistudiocdn.com/react@^19.2.0",
+    "react-dom/": "https://aistudiocdn.com/react-dom@^19.2.0/",
+    "react/": "https://aistudiocdn.com/react@^19.2.0/",
+    "@google/genai": "https://aistudiocdn.com/@google/genai@^1.28.0"
+  }
+}
+</script>
+<link rel="stylesheet" href="/index.css">
+</head>
+  <body class="paper-texture">
+    <div id="root"></div>
+    <script type="module" src="/App.tsx"></script>
+  </body>
+</html>
