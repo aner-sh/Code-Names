@@ -1,22 +1,47 @@
 import React, { useState, useEffect } from 'react';
 import { LeaderboardEntry } from '../types/index';
-import { loadLeaderboard } from '../../services/storageService';
+import { socket } from '../types/socket';
 
 interface RoomManagerProps {
+  authToken: string;
   onCreateRoom: () => void;
   onJoinRoom: (code: string) => void;
   onStartLocalGame: () => void;
   isCreating: boolean;
 }
 
-const RoomManager: React.FC<RoomManagerProps> = ({ onCreateRoom, onJoinRoom, onStartLocalGame, isCreating }) => {
+const RoomManager: React.FC<RoomManagerProps> = ({ authToken, onCreateRoom, onJoinRoom, onStartLocalGame, isCreating }) => {
   const [roomCodeInput, setRoomCodeInput] = useState('');
   const [stats, setStats] = useState<LeaderboardEntry[]>([]);
 
   useEffect(() => {
-    const leaderboard = loadLeaderboard();
-    setStats(Object.values(leaderboard).sort((a, b) => b.wins - a.wins));
-  }, []);
+    const handleMessage = (event: any) => {
+      try {
+        const { type, payload } = JSON.parse(event.data);
+        if (type === 'leaderboard') {
+          const entries: LeaderboardEntry[] = Object.values(payload || {}).map((u: any) => ({
+            email: u.username,
+            name: u.username,
+            wins: u.wins ?? 0,
+            losses: u.losses ?? 0,
+            assassinHits: u.assassinHits ?? 0,
+            gamesPlayed: u.gamesPlayed ?? 0,
+          }));
+          entries.sort((a, b) => b.wins - a.wins);
+          setStats(entries);
+        }
+      } catch {
+        // ignore parse errors
+      }
+    };
+
+    socket.addEventListener('message', handleMessage);
+    socket.send(JSON.stringify({ type: 'get_leaderboard', payload: [authToken] }));
+
+    return () => {
+      socket.removeEventListener('message', handleMessage);
+    };
+  }, [authToken]);
 
   const handleJoinClick = () => {
     if (roomCodeInput.length === 6) {

@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { GameState, Team, Role, CardData, CardType, Player } from '../types/index';
-// import { TEAM_COLORS_UI } from '../types/constants';
 import { SpyIcon } from './icons';
 import Card from './Card';
 import { socket } from '../types/socket';
@@ -9,12 +8,13 @@ interface GameScreenProps {
   gameState: GameState;
   currentUser: Player;
   roomCode: string;
+  authToken: string;
   onPlayAgain: () => void;
   onLeaveRoom: () => void;
   isLocalGame?: boolean;
 }
 
-const GameScreen: React.FC<GameScreenProps> = ({ gameState, currentUser, roomCode, onPlayAgain, onLeaveRoom, isLocalGame }) => {
+const GameScreen: React.FC<GameScreenProps> = ({ gameState, currentUser, roomCode, authToken, onPlayAgain, onLeaveRoom, isLocalGame }) => {
   const [isSpymasterView, setIsSpymasterView] = useState(isLocalGame ? false : currentUser.role === Role.Spymaster);
   const [clueWord, setClueWord] = useState('');
   const [clueCount, setClueCount] = useState(1);
@@ -46,7 +46,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameState, currentUser, roomCod
 
     socket.send(JSON.stringify({
       type: "make_guess",
-      payload: [roomCode, clickedCard.word, currentUser.email]
+      payload: [authToken, roomCode, clickedCard.word, currentUser.email]
     }));
   };
   
@@ -55,7 +55,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameState, currentUser, roomCod
     
     socket.send(JSON.stringify({
       type: "end_turn",
-      payload: [roomCode]
+      payload: [authToken, roomCode]
     }));
   }
 
@@ -79,7 +79,7 @@ const GameScreen: React.FC<GameScreenProps> = ({ gameState, currentUser, roomCod
     
     socket.send(JSON.stringify({
       type: "give_clue",
-      payload: [roomCode, clueWord.trim().toUpperCase(), clueCount]
+      payload: [authToken, roomCode, clueWord.trim().toUpperCase(), clueCount]
     }));
     
     setClueWord('');

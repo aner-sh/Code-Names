@@ -2,22 +2,27 @@ import React, { useState } from 'react';
 import logoImg from '../assets/icon.png';
 
 interface LoginScreenProps {
-  onLogin: (email: string, name: string) => void;
+  onLogin: (username: string, password: string, mode: 'login' | 'register') => void;
 }
 
 const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
-  const [email, setEmail] = useState('');
-  const [name, setName] = useState('');
+  const [username, setUsername] = useState('');
+  const [password, setPassword] = useState('');
+  const [mode, setMode] = useState<'login' | 'register'>('login');
   const [error, setError] = useState('');
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (name.trim().length < 2) {
-      setError('שם הסוכן חייב להכיל לפחות 2 אותיות.');
+    if (username.trim().length < 3) {
+      setError('שם משתמש חייב להכיל לפחות 3 תווים.');
+      return;
+    }
+    if (password.length < 8) {
+      setError('סיסמה חייבת להכיל לפחות 8 תווים.');
       return;
     }
     setError('');
-    onLogin(email || `${name}@local.game`, name);
+    onLogin(username.trim(), password, mode);
   };
 
   return (
@@ -47,30 +52,38 @@ const LoginScreen: React.FC<LoginScreenProps> = ({ onLogin }) => {
                   </div>
                 )}
                 <div className="flex flex-col items-center">
-                  <label className="block text-sm md:text-base font-main font-bold text-gray-400 mb-1.5 md:mb-2 uppercase tracking-wide text-center">זיהוי סוכן</label>
+                  <label className="block text-sm md:text-base font-main font-bold text-gray-400 mb-1.5 md:mb-2 uppercase tracking-wide text-center">שם משתמש</label>
                   <input
                     type="text"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
+                    value={username}
+                    onChange={(e) => setUsername(e.target.value)}
                     className="w-full input-standard text-center text-xl md:text-2xl py-2 md:py-3 font-main rounded-xl transition-all"
-                    placeholder="הכניסו שם..."
+                    placeholder="username"
                     required
                   />
                 </div>
                 <div className="flex flex-col items-center">
-                  <label className="block text-xs md:text-sm font-main font-bold text-gray-500 mb-1.5 md:mb-2 uppercase tracking-wide text-center">כתובת תקשורת (אופציונלי)</label>
+                  <label className="block text-xs md:text-sm font-main font-bold text-gray-500 mb-1.5 md:mb-2 uppercase tracking-wide text-center">סיסמה</label>
                   <input
-                    type="email"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
                     className="w-full input-standard text-center text-base md:text-lg py-2 md:py-3 font-placeholder rounded-xl"
-                    placeholder="agent@network.io"
+                    placeholder="********"
                   />
                 </div>
               </div>
 
               <button type="submit" className="w-full py-3 md:py-4 btn-primary text-2xl md:text-3xl font-main tracking-widest rounded-xl shadow-lg hover:shadow-red-500/20 active:scale-[0.98]">
-                כניסה למערכת
+                {mode === 'login' ? 'כניסה' : 'הרשמה'}
+              </button>
+
+              <button
+                type="button"
+                onClick={() => setMode(prev => (prev === 'login' ? 'register' : 'login'))}
+                className="w-full py-2 bg-slate-800/60 hover:bg-slate-700/70 text-slate-200 font-main font-bold rounded-xl transition-all border border-slate-700"
+              >
+                {mode === 'login' ? 'אין לך משתמש? הרשמה' : 'כבר רשום? כניסה'}
               </button>
             </form>
           </div>

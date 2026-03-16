@@ -53,10 +53,8 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ currentUser, roomCode, player
         return;
       }
 
-      socket.send(JSON.stringify({
-        type: "start_game",
-        payload: [roomCode, trimmedWords]
-      }));
+      // start_game is sent by App (so it can attach auth token)
+      onStartGame(trimmedWords);
     } else {
       // For local games, we just call the prop directly
       onStartGame(trimmedWords);
@@ -70,10 +68,8 @@ const SetupScreen: React.FC<SetupScreenProps> = ({ currentUser, roomCode, player
         return;
     }
 
-    socket.send(JSON.stringify({
-        type: "join_role",
-        payload: [roomCode, currentUser.email, team, role]
-    }));
+    // join_role is sent by App (so it can attach auth token)
+    onJoinRole(team, role);
   };
 
   const renderRoleSlot = (team: Team, role: Role) => {

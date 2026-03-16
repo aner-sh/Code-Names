@@ -3,6 +3,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { dirname } from 'node:path';
 import * as net from 'node:net';
+import * as tls from 'node:tls';
 import fs from 'node:fs';
 import { GoogleGenAI } from '@google/genai';
 
@@ -124,13 +125,31 @@ function createWindow() {
 }
 
 function setupTcpClient() {
-  tcpClient = new net.Socket();
+  const tlsEnabled = (getEnvValue('TLS_ENABLED') ?? '1').toLowerCase() !== '0';
+  const host = getEnvValue('TCP_HOST') ?? '127.0.0.1';
+  const port = Number(getEnvValue('TCP_PORT') ?? '3000');
+
+  tcpClient = tlsEnabled ? (new tls.TLSSocket(new net.Socket()) as any) : new net.Socket();
   let buffer = '';
 
-  // Connect to the Python Server on Port 3000
-  tcpClient.connect(3000, '127.0.0.1', () => {
-    console.log('✅ Successfully connected to Python TCP Server');
-  });
+  if (tlsEnabled) {
+    const rejectUnauthorized = (getEnvValue('TLS_REJECT_UNAUTHORIZED') ?? '1').toLowerCase() === '1';
+    const caPath = getEnvValue('TLS_CA_FILE');
+    const ca = caPath && fs.existsSync(caPath) ? fs.readFileSync(caPath) : undefined;
+
+    const client = tls.connect(
+      { host, port, rejectUnauthorized, ca },
+      () => {
+        console.log('✅ Connected to Python server (TLS)');
+      }
+    );
+    tcpClient = client as any;
+  } else {
+    // Connect to the Python Server on Port 3000
+    tcpClient.connect(port, host, () => {
+      console.log('✅ Successfully connected to Python TCP Server');
+    });
+  }
 
   // Handle incoming data stream from Python
   tcpClient.on('data', (chunk) => {

@@ -9,10 +9,11 @@ interface GameOverScreenProps {
   onReturnToLobby: () => void;
   currentUser: Player;
   roomCode: string;
+  authToken: string;
   isLocalGame?: boolean;
 }
 
-const GameOverScreen: React.FC<GameOverScreenProps> = ({ winningTeam, reason, players, onReturnToLobby, currentUser, roomCode, isLocalGame }) => {
+const GameOverScreen: React.FC<GameOverScreenProps> = ({ winningTeam, reason, players, onReturnToLobby, currentUser, roomCode, authToken, isLocalGame }) => {
   const [confirmedEmails, setConfirmedEmails] = useState<string[]>([]);
   const isRed = winningTeam === Team.Red;
 
@@ -34,7 +35,7 @@ const GameOverScreen: React.FC<GameOverScreenProps> = ({ winningTeam, reason, pl
   const handleConfirmRematch = () => {
     socket.send(JSON.stringify({
       type: "play_again",
-      payload: [roomCode, currentUser.email]
+      payload: [authToken, roomCode, currentUser.email]
     }));
   };
   

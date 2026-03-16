@@ -5,7 +5,6 @@ import SetupScreen from './src/components/SetupScreen';
 import GameScreen from './src/components/GameScreen';
 import GameOverScreen from './src/components/GameOverScreen';
 import { GamePhase, Team, Role, GameState, Player, CardData, CardType } from './src/types/index';
-import { loadLeaderboard, saveLeaderboard } from './services/storageService';
 import { socket } from './src/types/socket'; 
 import { createRoot } from 'react-dom/client';
 
@@ -80,6 +79,7 @@ const normalizeGameState = (
 const App: React.FC = () => {
   const [gamePhase, setGamePhase] = useState<GamePhase>(GamePhase.Login);
   const [currentUser, setCurrentUser] = useState<Player | null>(null);
+  const [authToken, setAuthToken] = useState<string>('');
   const [roomCode, setRoomCode] = useState<string>('');
   const [players, setPlayers] = useState<Player[]>([]);
   const [gameState, setGameState] = useState<GameState | null>(null);
@@ -88,10 +88,33 @@ const App: React.FC = () => {
   const [isLocalGame, setIsLocalGame] = useState(false);
 
   useEffect(() => {
+    // Restore auth token & username from sessionStorage (if exist)
+    const storedToken = sessionStorage.getItem('authToken') || '';
+    const storedUser = sessionStorage.getItem('authUsername') || '';
+    if (storedToken && storedUser && !authToken && !currentUser) {
+      setAuthToken(storedToken);
+      setCurrentUser({ email: storedUser, name: storedUser, team: null, role: null });
+      setGamePhase(GamePhase.Lobby);
+    }
+  }, []);
+
+  useEffect(() => {
     const handleServerMessage = (event: any) => {
       const { type, payload } = JSON.parse(event.data);
 
       switch (type) {
+        case "auth_success":
+          setAuthToken(payload.token);
+          setCurrentUser({ email: payload.username, name: payload.username, team: null, role: null });
+          sessionStorage.setItem('authToken', payload.token);
+          sessionStorage.setItem('authUsername', payload.username);
+          setGamePhase(GamePhase.Lobby);
+          break;
+
+        case "auth_error":
+          alert(payload.message || "שגיאת אימות");
+          break;
+
         case "room_updated": {
           const nextPlayers: Player[] = payload.players || players;
           setPlayers(nextPlayers);
@@ -160,11 +183,6 @@ const App: React.FC = () => {
             assassinHit: !!payload.assassinEmail 
           });
           setGamePhase(GamePhase.GameOver);
-          updateLeaderboard(
-            players.filter(p => p.team === payload.winningTeam).map(p => p.email),
-            players.map(p => p.email),
-            payload.assassinEmail
-          );
           break;
 
         case "game_reset":
@@ -178,25 +196,11 @@ const App: React.FC = () => {
     return () => socket.removeEventListener("message", handleServerMessage);
   }, [players]); // Dependency on players needed for leaderboard update logic
 
-  const updateLeaderboard = (winnersEmails: string[], allEmails: string[], assassinEmail?: string) => {
-    let leaderboard = loadLeaderboard();
-    allEmails.forEach(email => {
-      const player = players.find(p => p.email === email);
-      if (!leaderboard[email]) {
-        leaderboard[email] = { email, name: player?.name || email, wins: 0, losses: 0, assassinHits: 0, gamesPlayed: 0 };
-      }
-      const entry = leaderboard[email];
-      entry.gamesPlayed += 1;
-      if (winnersEmails.includes(email)) entry.wins += 1;
-      else entry.losses += 1;
-      if (assassinEmail === email) entry.assassinHits += 1;
-    });
-    saveLeaderboard(leaderboard);
-  };
-
-  const handleLogin = (email: string, name: string) => {
-    setCurrentUser({ email, name, team: null, role: null });
-    setGamePhase(GamePhase.Lobby);
+  const handleLogin = (username: string, password: string, mode: 'login' | 'register') => {
+    socket.send(JSON.stringify({
+      type: mode === 'register' ? 'register_user' : 'login_user',
+      payload: [username, password],
+    }));
   };
 
   const handleCreateRoom = () => {
@@ -204,7 +208,7 @@ const App: React.FC = () => {
     setIsCreating(true);
     socket.send(JSON.stringify({
       type: "create_room",
-      payload: [currentUser, false]
+      payload: [authToken, currentUser, false]
     }));
   };
 
@@ -213,7 +217,7 @@ const App: React.FC = () => {
     setIsCreating(true);
     socket.send(JSON.stringify({
       type: "create_room",
-      payload: [currentUser, true]
+      payload: [authToken, currentUser, true]
     }));
   };
 
@@ -225,7 +229,7 @@ const App: React.FC = () => {
     }
     socket.send(JSON.stringify({
       type: "join_room",
-      payload: [code, currentUser]
+      payload: [authToken, code, currentUser]
     }));
   };
 
@@ -233,7 +237,7 @@ const App: React.FC = () => {
     if (roomCode && currentUser) {
       socket.send(JSON.stringify({
         type: "leave_room",
-        payload: [roomCode, currentUser.email]
+        payload: [authToken, roomCode, currentUser.email]
       }));
     }
     setRoomCode('');
@@ -247,7 +251,7 @@ const App: React.FC = () => {
     setCurrentUser({ ...currentUser, team, role });
     socket.send(JSON.stringify({
       type: "join_role",
-      payload: [roomCode, currentUser.email, team, role]
+      payload: [authToken, roomCode, currentUser.email, team, role]
     }));
   };
 
@@ -255,15 +259,15 @@ const App: React.FC = () => {
     if (!roomCode) return;
     socket.send(JSON.stringify({
       type: "start_game",
-      payload: [roomCode, words]
+      payload: [authToken, roomCode, words]
     }));
-  }, [roomCode]);
+  }, [authToken, roomCode]);
 
   const handlePlayAgain = () => {
     if (roomCode) {
       socket.send(JSON.stringify({
         type: "reset_game",
-        payload: [roomCode]
+        payload: [authToken, roomCode]
       }));
     }
   };
@@ -277,8 +281,8 @@ const App: React.FC = () => {
       case GamePhase.Login: return <LoginScreen onLogin={handleLogin} />;
       case GamePhase.Lobby: return <RoomManager onCreateRoom={handleCreateRoom} onJoinRoom={handleJoinRoom} onStartLocalGame={handleStartLocalGame} isCreating={isCreating} />;
       case GamePhase.Setup: return currentUser && <SetupScreen currentUser={currentUser} roomCode={roomCode} players={players} onStartGame={handleStartGame} onJoinRole={handleJoinRole} onLeaveRoom={handleLeaveRoom} isLocalGame={isLocalGame} />;
-      case GamePhase.Playing: return gameState && <GameScreen gameState={gameState} currentUser={currentUser} roomCode={roomCode} onPlayAgain={handlePlayAgain} onLeaveRoom={handleLeaveRoom} isLocalGame={isLocalGame} />;
-      case GamePhase.GameOver: return gameOverInfo && currentUser && <GameOverScreen {...gameOverInfo} players={players} onReturnToLobby={handleReturnToLobby} currentUser={currentUser} roomCode={roomCode} isLocalGame={isLocalGame} />;
+      case GamePhase.Playing: return gameState && currentUser && <GameScreen gameState={gameState} currentUser={currentUser} roomCode={roomCode} authToken={authToken} onPlayAgain={handlePlayAgain} onLeaveRoom={handleLeaveRoom} isLocalGame={isLocalGame} />;
+      case GamePhase.GameOver: return gameOverInfo && currentUser && <GameOverScreen {...gameOverInfo} authToken={authToken} players={players} onReturnToLobby={handleReturnToLobby} currentUser={currentUser} roomCode={roomCode} isLocalGame={isLocalGame} />;
       default: return <LoginScreen onLogin={handleLogin} />;
     }
   };
