@@ -18,8 +18,8 @@ dist-electron
 .vscode/*
 !.vscode/extensions.json
 .idea
-server.key
-server.crt
+backend/server.key
+backend/server.crt
 .DS_Store
 *.suo
 *.ntvs*
