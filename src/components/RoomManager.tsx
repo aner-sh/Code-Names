@@ -8,9 +8,10 @@ interface RoomManagerProps {
   onJoinRoom: (code: string) => void;
   onStartLocalGame: () => void;
   isCreating: boolean;
+  onLogout: () => void;
 }
 
-const RoomManager: React.FC<RoomManagerProps> = ({ authToken, onCreateRoom, onJoinRoom, onStartLocalGame, isCreating }) => {
+const RoomManager: React.FC<RoomManagerProps> = ({ authToken, onCreateRoom, onJoinRoom, onStartLocalGame, isCreating, onLogout }) => {
   const [roomCodeInput, setRoomCodeInput] = useState('');
   const [stats, setStats] = useState<LeaderboardEntry[]>([]);
 
@@ -58,9 +59,12 @@ const RoomManager: React.FC<RoomManagerProps> = ({ authToken, onCreateRoom, onJo
           <div className="text-right">
             <h1 className="text-4xl md:text-5xl font-title text-white leading-tight">מרכז הבקרה</h1>
           </div>
-          <div className="game-card-bg px-6 py-2 rounded-full border border-blue-500/30 bg-blue-500/5">
-            <div className="text-xl md:text-2xl font-main font-black text-blue-400">{stats.length} <span className="text-sm text-slate-500 uppercase font-bold">סוכנים פעילים</span></div>
-          </div>
+          <button
+            onClick={onLogout}
+            className="px-6 py-2 rounded-full border border-red-500/40 bg-red-500/10 hover:bg-red-500/20 transition-colors text-red-400 hover:text-red-300 font-main font-bold text-sm uppercase tracking-wide"
+          >
+            התנתק
+          </button>
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6 items-stretch">

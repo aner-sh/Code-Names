@@ -40,7 +40,7 @@ def _is_valid_username(username: str) -> bool:
     return username.replace("_", "").isalnum()
 
 def _is_valid_password(password: str) -> bool:
-    return isinstance(password, str) and len(password) >= 8 and len(password) <= 128
+    return isinstance(password, str) and len(password) >= 8 and len(password) <= 24
 
 def _require_auth(token: str) -> str | None:
     if not isinstance(token, str) or not token:

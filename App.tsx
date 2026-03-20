@@ -13,7 +13,6 @@ const normalizeGameState = (
   players: Player[],
   roomCode: string
 ): GameState => {
-  // If it already looks like our frontend shape, just return it
   if (Array.isArray(raw.board)) {
     return raw as GameState;
   }
@@ -87,8 +86,11 @@ const App: React.FC = () => {
   const [isCreating, setIsCreating] = useState(false);
   const [isLocalGame, setIsLocalGame] = useState(false);
 
+  const [authError, setAuthError] = useState<string>('');
+  const [authSuccess, setAuthSuccess] = useState<string>('');
+  const [pendingAuthMode, setPendingAuthMode] = useState<'login' | 'register'>('login');
+
   useEffect(() => {
-    // Restore auth token & username from sessionStorage (if exist)
     const storedToken = sessionStorage.getItem('authToken') || '';
     const storedUser = sessionStorage.getItem('authUsername') || '';
     if (storedToken && storedUser && !authToken && !currentUser) {
@@ -104,15 +106,22 @@ const App: React.FC = () => {
 
       switch (type) {
         case "auth_success":
-          setAuthToken(payload.token);
-          setCurrentUser({ email: payload.username, name: payload.username, team: null, role: null });
-          sessionStorage.setItem('authToken', payload.token);
-          sessionStorage.setItem('authUsername', payload.username);
-          setGamePhase(GamePhase.Lobby);
+          setAuthError('');
+          if (pendingAuthMode === 'register') {
+            setAuthSuccess('ההרשמה הצליחה! כעת התחבר עם הפרטים שלך.');
+          } else {
+            setAuthSuccess('');
+            setAuthToken(payload.token);
+            setCurrentUser({ email: payload.username, name: payload.username, team: null, role: null });
+            sessionStorage.setItem('authToken', payload.token);
+            sessionStorage.setItem('authUsername', payload.username);
+            setGamePhase(GamePhase.Lobby);
+          }
           break;
 
         case "auth_error":
-          alert(payload.message || "שגיאת אימות");
+          setAuthSuccess('');
+          setAuthError(payload.message || 'שגיאת אימות');
           break;
 
         case "room_updated": {
@@ -161,16 +170,12 @@ const App: React.FC = () => {
         }
 
         case "join_error":
-          alert(payload.message || "Failed to join room");
+          setAuthError(payload.message || 'Failed to join room');
           break;
 
         case "game_started":
         case "game_updated": {
-          const normalized = normalizeGameState(
-            payload,
-            players,
-            roomCode
-          );
+          const normalized = normalizeGameState(payload, players, roomCode);
           setGameState(normalized);
           setGamePhase(GamePhase.Playing);
           break;
@@ -194,13 +199,29 @@ const App: React.FC = () => {
 
     socket.addEventListener("message", handleServerMessage);
     return () => socket.removeEventListener("message", handleServerMessage);
-  }, [players]); // Dependency on players needed for leaderboard update logic
+  }, [players, pendingAuthMode]);
 
   const handleLogin = (username: string, password: string, mode: 'login' | 'register') => {
+    setAuthError('');
+    setAuthSuccess('');
+    setPendingAuthMode(mode);
     socket.send(JSON.stringify({
       type: mode === 'register' ? 'register_user' : 'login_user',
       payload: [username, password],
     }));
+  };
+
+  const handleLogout = () => {
+    sessionStorage.removeItem('authToken');
+    sessionStorage.removeItem('authUsername');
+    setAuthToken('');
+    setCurrentUser(null);
+    setRoomCode('');
+    setPlayers([]);
+    setGameState(null);
+    setAuthError('');
+    setAuthSuccess('');
+    setGamePhase(GamePhase.Login);
   };
 
   const handleCreateRoom = () => {
@@ -224,7 +245,7 @@ const App: React.FC = () => {
   const handleJoinRoom = (code: string) => {
     if (!currentUser) return;
     if (!/^[A-Z0-9]{6}$/.test(code)) {
-      alert('קוד חדר לא תקין.');
+      setAuthError('קוד חדר לא תקין.');
       return;
     }
     socket.send(JSON.stringify({
@@ -271,19 +292,70 @@ const App: React.FC = () => {
       }));
     }
   };
-  
+
   const handleReturnToLobby = () => {
     handleLeaveRoom();
   };
 
   const renderContent = () => {
     switch (gamePhase) {
-      case GamePhase.Login: return <LoginScreen onLogin={handleLogin} />;
-      case GamePhase.Lobby: return <RoomManager onCreateRoom={handleCreateRoom} onJoinRoom={handleJoinRoom} onStartLocalGame={handleStartLocalGame} isCreating={isCreating} />;
-      case GamePhase.Setup: return currentUser && <SetupScreen currentUser={currentUser} roomCode={roomCode} players={players} onStartGame={handleStartGame} onJoinRole={handleJoinRole} onLeaveRoom={handleLeaveRoom} isLocalGame={isLocalGame} />;
-      case GamePhase.Playing: return gameState && currentUser && <GameScreen gameState={gameState} currentUser={currentUser} roomCode={roomCode} authToken={authToken} onPlayAgain={handlePlayAgain} onLeaveRoom={handleLeaveRoom} isLocalGame={isLocalGame} />;
-      case GamePhase.GameOver: return gameOverInfo && currentUser && <GameOverScreen {...gameOverInfo} authToken={authToken} players={players} onReturnToLobby={handleReturnToLobby} currentUser={currentUser} roomCode={roomCode} isLocalGame={isLocalGame} />;
-      default: return <LoginScreen onLogin={handleLogin} />;
+      case GamePhase.Login:
+        return (
+          <LoginScreen
+            onLogin={handleLogin}
+            externalError={authError}
+            externalSuccess={authSuccess}
+          />
+        );
+      case GamePhase.Lobby:
+        return (
+          <RoomManager
+            authToken={authToken}
+            onCreateRoom={handleCreateRoom}
+            onJoinRoom={handleJoinRoom}
+            onStartLocalGame={handleStartLocalGame}
+            isCreating={isCreating}
+            onLogout={handleLogout}
+          />
+        );
+      case GamePhase.Setup:
+        return currentUser && (
+          <SetupScreen
+            currentUser={currentUser}
+            roomCode={roomCode}
+            players={players}
+            onStartGame={handleStartGame}
+            onJoinRole={handleJoinRole}
+            onLeaveRoom={handleLeaveRoom}
+            isLocalGame={isLocalGame}
+          />
+        );
+      case GamePhase.Playing:
+        return gameState && currentUser && (
+          <GameScreen
+            gameState={gameState}
+            currentUser={currentUser}
+            roomCode={roomCode}
+            authToken={authToken}
+            onPlayAgain={handlePlayAgain}
+            onLeaveRoom={handleLeaveRoom}
+            isLocalGame={isLocalGame}
+          />
+        );
+      case GamePhase.GameOver:
+        return gameOverInfo && currentUser && (
+          <GameOverScreen
+            {...gameOverInfo}
+            authToken={authToken}
+            players={players}
+            onReturnToLobby={handleReturnToLobby}
+            currentUser={currentUser}
+            roomCode={roomCode}
+            isLocalGame={isLocalGame}
+          />
+        );
+      default:
+        return <LoginScreen onLogin={handleLogin} externalError={authError} externalSuccess={authSuccess} />;
     }
   };
 

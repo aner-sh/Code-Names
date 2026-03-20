@@ -63,7 +63,7 @@ async function generateWordsHe(): Promise<string[]> {
   let res: any;
   try {
     res = await ai.models.generateContent({
-      model: 'gemini-2.0-flash',
+      model: 'gemini-2.5-flash',
       contents: prompt,
     });
   } catch (e: any) {
